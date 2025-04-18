@@ -236,6 +236,7 @@ impl<'a> ECoreWalker<'a> {
     fn next_token(&mut self) -> WalkResult<'a, Token<'a>> {
         loop {
             let tkn = self.inner.next().ok_or(Error::NoMoreTokens)??;
+            dbg!("Got token: {}", tkn);
             if !matches!(tkn, Token::Text { .. }) {
                 return Ok(tkn);
             }
@@ -935,6 +936,7 @@ impl<'a> ECoreWalker<'a> {
     fn walk_literal_inner(&mut self, class_ctx: &mut ClassCtx) -> WalkResult<'a, ()> {
         let mut name = None;
         let mut value = None;
+        let mut annot = 0;
         loop {
             let tkn = self.next_token()?;
             match tkn {
@@ -951,9 +953,13 @@ impl<'a> ECoreWalker<'a> {
                     ..
                 } if prefix.is_empty() && local == "name" => name = Some(value.as_str()),
                 Token::ElementEnd {
-                    end: ElementEnd::Empty,
+                    end: ElementEnd::Open,
                     ..
-                } => {
+                } => (),
+                Token::ElementEnd {
+                    end: ElementEnd::Close(_, s2),
+                    ..
+                } if s2.as_str() == "eLiterals" => {
                     let name = name.ok_or(Error::MissingExpected {
                         expected: "name attribute for eLiteral element",
                         textpos: self.stream().gen_text_pos(),
@@ -962,7 +968,17 @@ impl<'a> ECoreWalker<'a> {
                     class_ctx.add_literal(lit);
                     break;
                 }
-                _ => {
+                Token::ElementStart { prefix, local, .. }
+                    if prefix.is_empty() && local == "eAnnotations" => {
+                        annot += 1;
+                }
+                Token::ElementEnd {
+                    end: ElementEnd::Close(_, s2),
+                      ..
+                } if s2.as_str() == "eAnnotations" && annot > 0 => {
+                    annot -= 1;
+                }
+                _ if annot == 0 => {
                     let err = Error::unsupported_token(
                         tkn,
                         self.stream(),
@@ -970,6 +986,7 @@ impl<'a> ECoreWalker<'a> {
                     );
                     warn!("{}", err.into_owning())
                 }
+                _ => ()
             }
         }
         Ok(())
