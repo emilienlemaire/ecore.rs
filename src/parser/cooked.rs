@@ -991,8 +991,9 @@ impl<'a> ECoreWalker<'a> {
                     break;
                 }
                 Token::ElementStart { prefix, local, .. }
-                    if prefix.is_empty() && local == "eAnnotations" => {
-                        self.walk_annotations_inner(class_ctx)?
+                    if prefix.is_empty() && local == "eAnnotations" =>
+                {
+                    self.walk_annotations_inner(class_ctx)?
                 }
                 _ => {
                     let err = Error::unsupported_token(

@@ -26,11 +26,7 @@ impl Typ {
     }
 
     pub fn parse_bounds(self, lbound: Option<&str>, ubound: Option<&str>) -> Res<Bounds> {
-        let lbound = match (lbound, self) {
-            (Some(lbound), _) => lbound.as_ref(),
-            (None, Self::EReference) => "0",
-            (None, Self::EAttribute) => "1",
-        };
+        let lbound = lbound.unwrap_or("0");
         Bounds::from_str(Some(lbound), ubound)
     }
 }

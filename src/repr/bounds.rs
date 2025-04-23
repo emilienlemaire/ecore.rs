@@ -70,9 +70,9 @@ impl Bounds {
     /// [`repr::structural::Typ::parse_bounds`] instead.
     pub fn from_str(lbound: Option<&str>, ubound: Option<&str>) -> Res<Self> {
         let lbound = match lbound {
-            None => 1,
+            None => 0,
             Some(lbound) => {
-                if let Some(lbound) = usize::from_str_radix(lbound, 10).ok() {
+                if let Ok(lbound) = lbound.parse::<usize>() {
                     lbound
                 } else {
                     bail!(@unexpected("lower bound (unsigned integer)") lbound)
@@ -83,7 +83,7 @@ impl Bounds {
             None => Some(if lbound == 0 { 1 } else { lbound }),
             Some("-1") => None,
             Some(ubound) => {
-                if let Some(ubound) = usize::from_str_radix(ubound, 10).ok() {
+                if let Ok(ubound) = ubound.parse::<usize>() {
                     Some(ubound)
                 } else {
                     bail!(@unexpected("upper bound (`-1` or unsigned integer)") ubound)
