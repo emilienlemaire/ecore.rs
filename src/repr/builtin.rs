@@ -83,7 +83,7 @@ macro_rules! builtin_builders {
                         concat!("http://www.eclipse.org/emf/2002/Ecore#//", stringify!($variant)) =>
                             Ok(Self::$variant),
                     )*
-                    _ => bail!("unknown builtit class URL `{}`", s),
+                    _ => bail!("unknown builtin class URL `{}`", s),
                 }
             }
         }

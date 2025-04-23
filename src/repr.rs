@@ -208,6 +208,7 @@ impl Path {
 pub struct ELit {
     name: String,
     value: Option<String>,
+    annots: Annots
 }
 
 pub type ELits = Vec<ELit>;
@@ -217,12 +218,14 @@ impl ELit {
         Self {
             name: name.into(),
             value: value.map(|s| s.into()),
+            annots: Vec::new(),
         }
     }
     pub fn new_name(name: impl Into<String>) -> Self {
         Self {
             name: name.into(),
             value: None,
+            annots: Vec::new(),
         }
     }
 
@@ -234,11 +237,22 @@ impl ELit {
     }
 }
 
+impl HasAnnots for ELit {
+    fn annotations(&self) -> &Annots {
+        &self.annots
+    }
+
+    fn annotations_mut(&mut self) -> &mut Annots {
+        &mut self.annots
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Param {
     name: String,
     bounds: Bounds,
     typ: idx::Class,
+    pub ordered: bool,
 }
 
 pub type Params = Vec<Param>;
@@ -248,6 +262,7 @@ impl Param {
         Self {
             name: name.into(),
             bounds: bounds.into(),
+            ordered: false,
             typ,
         }
     }

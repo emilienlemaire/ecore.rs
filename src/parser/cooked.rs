@@ -236,7 +236,7 @@ impl<'a> ECoreWalker<'a> {
     fn next_token(&mut self) -> WalkResult<'a, Token<'a>> {
         loop {
             let tkn = self.inner.next().ok_or(Error::NoMoreTokens)??;
-            dbg!("Got token: {}", tkn);
+            // dbg!("Got token: {}", tkn);
             if !matches!(tkn, Token::Text { .. }) {
                 return Ok(tkn);
             }
@@ -519,6 +519,19 @@ impl<'a> ECoreWalker<'a> {
                         });
                     }
                 }
+                Token::ElementEnd {
+                    end: ElementEnd::Empty,
+                    ..
+                } => {
+                    if annot.is_some() {
+                        return Ok(());
+                    } else {
+                        return Err(Error::MissingExpected {
+                            expected: "source attribute for eAnnotation element",
+                            textpos: self.stream().gen_text_pos(),
+                        });
+                    }
+                }
                 _ => {
                     let err = Error::unsupported_token(
                         tkn,
@@ -735,6 +748,7 @@ impl<'a> ECoreWalker<'a> {
         let mut e_opposite = None;
         let mut i_d = None;
         let mut containment = None;
+        let mut ordered = None;
         let err_msg = "Inside strucural feature, expecting an attribute to be one of \
         containment, iD, eOpposite, lowerBound, upperBound, name, eType";
         loop {
@@ -751,6 +765,7 @@ impl<'a> ECoreWalker<'a> {
                     "eOpposite" => e_opposite = Some(value.as_str()),
                     "lowerBound" => lower_bound = Some(value.as_str()),
                     "upperBound" => upper_bound = Some(value.as_str()),
+                    "ordered" => ordered = Some(value.as_str()),
                     "name" => name = Some(value.as_str()),
                     "eType" => e_type = Some(value.as_str()),
                     _ => {
@@ -820,6 +835,9 @@ impl<'a> ECoreWalker<'a> {
                     if let Some(b) = i_d {
                         structural.set_is_id(b);
                     }
+                    if let Some(o) = ordered {
+                        structural.ordered = o.parse().unwrap();
+                    }
                     match end {
                         ElementEnd::Close(_, _) => {
                             return Err(Error::unexpected_token(tkn, self.stream(), err_msg))
@@ -870,6 +888,7 @@ impl<'a> ECoreWalker<'a> {
         let mut lower_bound = None;
         let mut upper_bound = None;
         let mut e_type = None;
+        let mut ordered = None;
         let err_msg = "Inside parameters, expecting the attribute to be one of \
         name, lowerBound, upperBound, eType";
         loop {
@@ -885,6 +904,7 @@ impl<'a> ECoreWalker<'a> {
                     "lowerBound" => lower_bound = Some(value.as_str()),
                     "upperBound" => upper_bound = Some(value.as_str()),
                     "eType" => e_type = Some(value.as_str()),
+                    "ordered" => ordered = Some(value.as_str()),
                     _ => {
                         let err = Error::unexpected_token(tkn, self.stream(), err_msg);
                         warn!("{}", err.into_owning())
@@ -917,7 +937,10 @@ impl<'a> ECoreWalker<'a> {
                                 textpos: self.stream().gen_text_pos(),
                             }
                         })?;
-                    let param = repr::Param::new(name, bounds, e_type);
+                    let mut param = repr::Param::new(name, bounds, e_type);
+                    if let Some(o) = ordered {
+                        param.ordered = o.parse().unwrap();
+                    }
                     ope.add_parameter(param);
                     break;
                 }
@@ -936,7 +959,6 @@ impl<'a> ECoreWalker<'a> {
     fn walk_literal_inner(&mut self, class_ctx: &mut ClassCtx) -> WalkResult<'a, ()> {
         let mut name = None;
         let mut value = None;
-        let mut annot = 0;
         loop {
             let tkn = self.next_token()?;
             match tkn {
@@ -970,15 +992,9 @@ impl<'a> ECoreWalker<'a> {
                 }
                 Token::ElementStart { prefix, local, .. }
                     if prefix.is_empty() && local == "eAnnotations" => {
-                        annot += 1;
+                        self.walk_annotations_inner(class_ctx)?
                 }
-                Token::ElementEnd {
-                    end: ElementEnd::Close(_, s2),
-                      ..
-                } if s2.as_str() == "eAnnotations" && annot > 0 => {
-                    annot -= 1;
-                }
-                _ if annot == 0 => {
+                _ => {
                     let err = Error::unsupported_token(
                         tkn,
                         self.stream(),
@@ -986,7 +1002,6 @@ impl<'a> ECoreWalker<'a> {
                     );
                     warn!("{}", err.into_owning())
                 }
-                _ => ()
             }
         }
         Ok(())

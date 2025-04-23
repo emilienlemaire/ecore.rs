@@ -46,6 +46,7 @@ pub struct Structural {
     pub containment: bool,
     /// No idea what this is, corresponds to the attribute `iD`.
     pub is_id: bool,
+    pub ordered: bool,
 }
 impl HasAnnots for Structural {
     fn annotations(&self) -> &repr::Annots {
@@ -69,6 +70,7 @@ impl Structural {
             annotations: repr::Annots::with_capacity(3),
             containment: false,
             is_id: false,
+            ordered: false,
         })
     }
 
